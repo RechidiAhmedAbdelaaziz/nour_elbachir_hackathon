@@ -1,14 +1,20 @@
 declare function checkDeepFake(imageUrl: string): Promise<boolean>;
+declare function isNewsFake(news: {
+    text?: string;
+    image?: string;
+}): Promise<boolean>;
 declare class AttributeViewer {
-    private panel;
-    private currentEl;
+    private checkedImages;
+    private checkedTitles;
     constructor();
-    private ensurePanel;
-    private handleClick;
-    private updateDeepFakeStatus;
-    private showDeepFakeCheck;
-    private clearPanel;
-    private show;
-    private hide;
+    private setupHoverListeners;
+    private isRelevantImage;
+    private checkNewsWithImageAndText;
+    private checkNewsWithTextOnly;
+    private showTitleCheckingMessage;
+    private showTitleWarning;
+    private checkImageIfNeeded;
+    private showCheckingMessage;
+    private showWarning;
 }
 //# sourceMappingURL=content.d.ts.map

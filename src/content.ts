@@ -1,9 +1,8 @@
-// if clicked element contains an image, check if it's a deep fake
 
 
 async function checkDeepFake(imageUrl: string): Promise<boolean> {
-  const api_user = '16335105';
-  const api_secret = 'DptAiwNM3HqmbmciVkjwTiLKZRHrxcCn';
+  const api_user = '923811902';
+  const api_secret = 'eSf7HziReSsLcDF7mVgnXzro2Euw8Cd2';
 
   try {
     const params = new URLSearchParams({
@@ -20,21 +19,6 @@ async function checkDeepFake(imageUrl: string): Promise<boolean> {
     }
 
     const data = await response.json();
-    //   {
-    // "status": "success",
-    // "request": {
-    //   "id": "req_jB7EKYCHBK16LH7wbb12a",
-    //   "timestamp": 1763484898.985702,
-    //   "operations": 5
-    // },
-    // "type": {
-    //   "ai_generated": 0.06
-    // },
-    // "media": {
-    //   "id": "med_jB7Eci3oTpMurCAeYvpBH",
-    //   "uri": "https://i.redd.it/08rc2cty8y1g1.png"
-    // }
-    // }
     if (data && data.type && typeof data.type.ai_generated === 'number') {
       const aiGeneratedScore = data.type.ai_generated;
       return aiGeneratedScore >= 0.6;
@@ -47,166 +31,302 @@ async function checkDeepFake(imageUrl: string): Promise<boolean> {
   }
 }
 
+async function isNewsFake(news: {
+  text?: string;
+  image?: string;
+}): Promise<boolean> {
+  const baseUrl = 'https://abderrahimzeno.app.n8n.cloud/webhook/63979e89-0aa1-4a6d-be82-e691b7cdb7f2';
 
-// implement image handling in AttributeViewer and add deep fake check functionality
-// Basic AttributeViewer with image + deep fake check support
-class AttributeViewer {
-  private panel: HTMLDivElement | null = null;
-  private currentEl: Element | null = null;
-
-  constructor() {
-    this.ensurePanel();
-    document.addEventListener('click', this.handleClick, true);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.hide();
+  try {
+    const response = await fetch(baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(news)
     });
-  }
-
-  private ensurePanel() {
-    if (this.panel) return;
-    this.panel = document.createElement('div');
-    Object.assign(this.panel.style, {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: '2147483647',
-      minWidth: '400px',
-      font: '16px/1.4 system-ui, sans-serif',
-      background: '#111',
-      color: '#eee',
-      border: '1px solid #333',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 8px 32px rgba(0,0,0,.6)',
-      pointerEvents: 'auto',
-      backdropFilter: 'blur(8px)',
-      wordBreak: 'break-word'
-    });
-    this.panel.addEventListener('click', (e) => e.stopPropagation());
-    document.documentElement.appendChild(this.panel);
-  }
-
-  private handleClick = async (e: MouseEvent) => {
-    const target = e.target as Element | null;
-    if (!target) return;
-    if (!(target instanceof HTMLElement)) return;
-
-    if (target.tagName === 'IMG') {
-      this.show(target);
-      const src = (target as HTMLImageElement).currentSrc || (target as HTMLImageElement).src;
-      if (src) {
-        this.showDeepFakeCheck();
-        try {
-          const isDf = await checkDeepFake(src);
-          this.updateDeepFakeStatus(isDf);
-        } catch {
-          this.updateDeepFakeStatus(false, true);
-        }
-      }
-    }
-  };
-
-  private updateDeepFakeStatus(isDf: boolean, error = false) {
-    if (!this.panel) return;
-    this.panel.innerHTML = '';
-
-    const container = document.createElement('div');
-    Object.assign(container.style, {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '20px',
-      padding: '10px',
-      justifyContent: 'center',
-      textAlign: 'center'
-    });
-
-    // Icon
-    const icon = document.createElement('div');
-    Object.assign(icon.style, {
-      fontSize: '48px',
-      flexShrink: '0'
-    });
-
-    // Message
-    const message = document.createElement('div');
-    Object.assign(message.style, {
-      flex: '1',
-      fontSize: '20px',
-      fontWeight: '600',
-      lineHeight: '1.4'
-    });
-
-    if (error) {
-      icon.textContent = '⚠️';
-      message.textContent = 'Unable to verify image';
-      message.style.color = '#f87171';
-    } else if (isDf) {
-      icon.textContent = '🤖';
-      message.textContent = 'Warning: This image may be AI-generated';
-      message.style.color = '#fbbf24';
-    } else {
-      icon.textContent = '✓';
-      message.textContent = 'This image appears authentic';
-      message.style.color = '#34d399';
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    container.appendChild(icon);
-    container.appendChild(message);
-    this.panel.appendChild(container);
+    const data = await response.json();
+    return data.is_fake === true;
   }
-
-  private showDeepFakeCheck() {
-    if (!this.panel) return;
-    this.panel.innerHTML = '';
-
-    const container = document.createElement('div');
-    Object.assign(container.style, {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '20px',
-      padding: '10px',
-      justifyContent: 'center',
-      textAlign: 'center'
-    });
-
-    const spinner = document.createElement('div');
-    spinner.textContent = '🔍';
-    spinner.style.fontSize = '48px';
-
-    const message = document.createElement('div');
-    message.textContent = 'Checking image...';
-    Object.assign(message.style, {
-      fontSize: '18px',
-      color: '#9ca3af'
-    });
-
-    container.appendChild(spinner);
-    container.appendChild(message);
-    this.panel.appendChild(container);
-  }
-
-  private clearPanel() {
-    if (this.panel) this.panel.innerHTML = '';
-  }
-
-  private show(el: Element) {
-    this.currentEl = el;
-    this.ensurePanel();
-    this.clearPanel();
-    // Only show deep fake check for images
-    if (el.tagName !== 'IMG') {
-      this.panel!.style.display = 'none';
-      return;
-    }
-    this.panel!.style.display = 'block';
-  }
-
-  private hide() {
-    if (this.panel) this.panel.style.display = 'none';
-    this.currentEl = null;
+  catch (error) {
+    console.error('Error checking news fake:', error);
+    return false;
   }
 }
 
-// Initialize viewer
+
+
+
+
+class AttributeViewer {
+  private checkedImages = new WeakSet<HTMLImageElement>();
+  private checkedTitles = new WeakSet<Element>();
+
+  constructor() {
+    this.setupHoverListeners();
+  }
+
+  private setupHoverListeners() {
+    document.body.addEventListener('mouseover', (e) => {
+      const target = e.target as Element;
+
+      if (!(target instanceof HTMLElement)) return;
+
+      const shredditPost = target.tagName.toLowerCase() === 'shreddit-post'
+        ? target
+        : target.closest('shreddit-post');
+
+      if (!shredditPost) return;
+
+      if (this.checkedTitles.has(shredditPost)) return;
+
+      const images = Array.from(shredditPost.querySelectorAll('img'));
+
+      let relevantImage: HTMLImageElement | null = null;
+      for (const img of images) {
+        if (this.isRelevantImage(img)) {
+          relevantImage = img;
+          break;
+        }
+      }
+
+      const titleElement = shredditPost.querySelector('[class*="post-title"], [id*="post-title"]');
+
+      if (relevantImage && titleElement) {
+        this.checkImageIfNeeded(relevantImage);
+        this.checkNewsWithImageAndText(titleElement, relevantImage);
+      }
+      else if (titleElement && !relevantImage) {
+        this.checkNewsWithTextOnly(titleElement);
+      }
+      else if (relevantImage && !titleElement) {
+        this.checkImageIfNeeded(relevantImage);
+        this.checkedTitles.add(shredditPost);
+      }
+    });
+  }
+
+  private isRelevantImage(img: HTMLImageElement): boolean {
+    const className = img.className || '';
+    const id = img.id || '';
+    return className.toLowerCase().includes('media') ||
+      className.toLowerCase().includes('post') ||
+      id.toLowerCase().includes('media') ||
+      id.toLowerCase().includes('post');
+  } private async checkNewsWithImageAndText(titleElement: Element, img: HTMLImageElement) {
+    if (this.checkedTitles.has(titleElement)) return;
+    this.checkedTitles.add(titleElement);
+
+    const titleText = titleElement.textContent?.trim();
+    const imageSrc = img.currentSrc || img.src;
+
+    if (!titleText && !imageSrc) return;
+
+    const checkingBadge = this.showTitleCheckingMessage(titleElement);
+
+    try {
+      const isFake = await isNewsFake({
+        text: titleText,
+        image: imageSrc
+      });
+
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+
+      if (isFake) {
+        this.showTitleWarning(titleElement);
+      }
+    } catch (error) {
+      console.error('Error checking news:', error);
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+    }
+  }
+
+  private async checkNewsWithTextOnly(titleElement: Element) {
+    if (this.checkedTitles.has(titleElement)) return;
+    this.checkedTitles.add(titleElement);
+
+    const titleText = titleElement.textContent?.trim();
+    if (!titleText) return;
+
+    const checkingBadge = this.showTitleCheckingMessage(titleElement);
+
+    try {
+      const isFake = await isNewsFake({ text: titleText });
+
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+
+      if (isFake) {
+        this.showTitleWarning(titleElement);
+      }
+    } catch (error) {
+      console.error('Error checking news:', error);
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+    }
+  }
+
+  private showTitleCheckingMessage(titleElement: Element): HTMLDivElement | null {
+    const checking = document.createElement('div');
+    checking.textContent = '🔍 Checking news...';
+    Object.assign(checking.style, {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      background: 'rgba(156, 163, 175, 0.95)',
+      color: '#fff',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '700',
+      zIndex: '2147483647',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      fontFamily: 'system-ui, sans-serif',
+      pointerEvents: 'none',
+      backdropFilter: 'blur(4px)'
+    });
+
+    const parent = titleElement.parentElement;
+    if (parent) {
+      const parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position === 'static') {
+        parent.style.position = 'relative';
+      }
+      parent.appendChild(checking);
+      return checking;
+    }
+    return null;
+  }
+
+  private showTitleWarning(titleElement: Element) {
+    const warning = document.createElement('div');
+    warning.textContent = '⚠️ Fake News';
+    Object.assign(warning.style, {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      background: 'rgba(239, 68, 68, 0.95)',
+      color: '#fff',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '700',
+      zIndex: '2147483647',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      fontFamily: 'system-ui, sans-serif',
+      pointerEvents: 'none',
+      backdropFilter: 'blur(4px)'
+    });
+
+    const parent = titleElement.parentElement;
+    if (parent) {
+      const parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position === 'static') {
+        parent.style.position = 'relative';
+      }
+      parent.appendChild(warning);
+    }
+  }
+
+  private async checkImageIfNeeded(img: HTMLImageElement) {
+    if (this.checkedImages.has(img)) return;
+    this.checkedImages.add(img);
+
+    const src = img.currentSrc || img.src;
+    if (!src) return;
+
+    const checkingBadge = this.showCheckingMessage(img);
+
+    try {
+      const isDf = await checkDeepFake(src);
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+
+      if (isDf) {
+        this.showWarning(img);
+      }
+    } catch (error) {
+      console.error('Error checking image:', error);
+      if (checkingBadge && checkingBadge.parentElement) {
+        checkingBadge.remove();
+      }
+    }
+  }
+
+  private showCheckingMessage(img: HTMLImageElement): HTMLDivElement | null {
+    const checking = document.createElement('div');
+    checking.textContent = '🔍 Checking...';
+    Object.assign(checking.style, {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      background: 'rgba(156, 163, 175, 0.95)',
+      color: '#fff',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '700',
+      zIndex: '2147483647',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      fontFamily: 'system-ui, sans-serif',
+      pointerEvents: 'none',
+      backdropFilter: 'blur(4px)'
+    });
+
+    const parent = img.parentElement;
+    if (parent) {
+      const parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position === 'static') {
+        parent.style.position = 'relative';
+      }
+      parent.appendChild(checking);
+      return checking;
+    }
+    return null;
+  }
+
+  private showWarning(img: HTMLImageElement) {
+    const warning = document.createElement('div');
+    warning.textContent = '⚠️ AI-Generated';
+    Object.assign(warning.style, {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      background: 'rgba(239, 68, 68, 0.95)',
+      color: '#fff',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '700',
+      zIndex: '2147483647',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+      fontFamily: 'system-ui, sans-serif',
+      pointerEvents: 'none',
+      backdropFilter: 'blur(4px)'
+    });
+
+    const parent = img.parentElement;
+    if (parent) {
+      const parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position === 'static') {
+        parent.style.position = 'relative';
+      }
+      parent.appendChild(warning);
+    }
+  }
+}
+
 new AttributeViewer();
+
+

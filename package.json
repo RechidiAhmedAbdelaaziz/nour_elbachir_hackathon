@@ -1,0 +1,13 @@
+{
+  "name": "element-attribute-viewer",
+  "version": "1.0.0",
+  "description": "Chrome extension to view element attributes on click",
+  "scripts": {
+    "build": "tsc && bash -c 'cp manifest.json dist/ && cp icon.png dist/'",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.270",
+    "typescript": "^5.3.0"
+  }
+}

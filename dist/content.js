@@ -1,352 +1,198 @@
 "use strict";
-// Element Attribute Viewer Extension
-// This content script runs on all web pages and allows users to inspect element attributes
+// if clicked element contains an image, check if it's a deep fake
+async function checkDeepFake(imageUrl) {
+    const api_user = '16335105';
+    const api_secret = 'DptAiwNM3HqmbmciVkjwTiLKZRHrxcCn';
+    try {
+        const params = new URLSearchParams({
+            'url': imageUrl,
+            'models': 'genai',
+            'api_user': api_user,
+            'api_secret': api_secret,
+        });
+        const response = await fetch(`https://api.sightengine.com/1.0/check.json?${params}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        //   {
+        // "status": "success",
+        // "request": {
+        //   "id": "req_jB7EKYCHBK16LH7wbb12a",
+        //   "timestamp": 1763484898.985702,
+        //   "operations": 5
+        // },
+        // "type": {
+        //   "ai_generated": 0.06
+        // },
+        // "media": {
+        //   "id": "med_jB7Eci3oTpMurCAeYvpBH",
+        //   "uri": "https://i.redd.it/08rc2cty8y1g1.png"
+        // }
+        // }
+        if (data && data.type && typeof data.type.ai_generated === 'number') {
+            const aiGeneratedScore = data.type.ai_generated;
+            return aiGeneratedScore >= 0.6;
+        }
+        return false;
+    }
+    catch (error) {
+        console.error('Error checking deep fake:', error);
+        return false;
+    }
+}
+// implement image handling in AttributeViewer and add deep fake check functionality
+// Basic AttributeViewer with image + deep fake check support
 class AttributeViewer {
     constructor() {
-        this.isActive = false;
-        this.lastSelectedElement = null;
-        this.infoPanel = null;
-        this.overlay = null;
-        this.handleClick = (event) => {
-            if (!this.isActive)
+        this.panel = null;
+        this.currentEl = null;
+        this.handleClick = async (e) => {
+            const target = e.target;
+            if (!target)
                 return;
-            const target = event.target;
-            if (this.shouldIgnoreElement(target))
+            if (!(target instanceof HTMLElement))
                 return;
-            event.preventDefault();
-            event.stopPropagation();
-            this.showElementInfo(target);
+            if (target.tagName === 'IMG') {
+                this.show(target);
+                const src = target.currentSrc || target.src;
+                if (src) {
+                    this.showDeepFakeCheck();
+                    try {
+                        const isDf = await checkDeepFake(src);
+                        this.updateDeepFakeStatus(isDf);
+                    }
+                    catch {
+                        this.updateDeepFakeStatus(false, true);
+                    }
+                }
+            }
         };
-        this.init();
-    }
-    init() {
-        this.injectStyles();
-        this.createOverlay();
-        this.activate();
-        console.log('Element Attribute Viewer: Initialized');
-    }
-    injectStyles() {
-        if (document.getElementById('attr-viewer-styles'))
-            return;
-        const styleEl = document.createElement('style');
-        styleEl.id = 'attr-viewer-styles';
-        styleEl.textContent = `
-      .attr-viewer-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.3);
-        z-index: 999998;
-        display: none;
-      }
-
-      .attr-viewer-overlay.active {
-        display: block;
-      }
-
-      .attr-viewer-panel {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 20px;
-        min-width: 400px;
-        max-width: 600px;
-        max-height: 80vh;
-        overflow-y: auto;
-        z-index: 999999;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        color: white;
-      }
-
-      .attr-viewer-panel h2 {
-        margin: 0 0 15px 0;
-        font-size: 22px;
-        font-weight: 600;
-        padding-bottom: 10px;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .attr-viewer-panel .tag-name {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-family: 'Courier New', monospace;
-        font-size: 16px;
-      }
-
-      .attr-viewer-section {
-        margin-top: 15px;
-      }
-
-      .attr-viewer-section h3 {
-        font-size: 16px;
-        margin: 0 0 10px 0;
-        opacity: 0.9;
-        font-weight: 500;
-      }
-
-      .attr-viewer-item {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        margin: 8px 0;
-        padding: 12px;
-        border-radius: 8px;
-        display: flex;
-        flex-wrap: wrap;
-        word-break: break-word;
-      }
-
-      .attr-viewer-name {
-        font-weight: 600;
-        color: #ffd700;
-        font-family: 'Courier New', monospace;
-        margin-right: 8px;
-      }
-
-      .attr-viewer-value {
-        color: rgba(255, 255, 255, 0.95);
-        flex: 1;
-        font-family: 'Courier New', monospace;
-      }
-
-      .attr-viewer-empty {
-        color: rgba(255, 255, 255, 0.5);
-        font-style: italic;
-        padding: 10px;
-      }
-
-      .attr-viewer-close {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: none;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 18px;
-        line-height: 1;
-        transition: all 0.2s;
-      }
-
-      .attr-viewer-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: rotate(90deg);
-      }
-
-      .attr-viewer-toggle {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        border-radius: 25px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        z-index: 999997;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s;
-      }
-
-      .attr-viewer-toggle:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-      }
-
-      .attr-viewer-toggle.inactive {
-        background: #999;
-      }
-    `;
-        document.head.appendChild(styleEl);
-    }
-    createOverlay() {
-        this.overlay = document.createElement('div');
-        this.overlay.className = 'attr-viewer-overlay';
-        this.overlay.addEventListener('click', () => this.closePanel());
-        document.body.appendChild(this.overlay);
-    }
-    activate() {
-        this.isActive = true;
+        this.ensurePanel();
         document.addEventListener('click', this.handleClick, true);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape')
+                this.hide();
+        });
     }
-    deactivate() {
-        this.isActive = false;
-        document.removeEventListener('click', this.handleClick, true);
-        this.clearHighlight();
-        this.closePanel();
+    ensurePanel() {
+        if (this.panel)
+            return;
+        this.panel = document.createElement('div');
+        Object.assign(this.panel.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: '2147483647',
+            minWidth: '400px',
+            font: '16px/1.4 system-ui, sans-serif',
+            background: '#111',
+            color: '#eee',
+            border: '1px solid #333',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+            pointerEvents: 'auto',
+            backdropFilter: 'blur(8px)',
+            wordBreak: 'break-word'
+        });
+        this.panel.addEventListener('click', (e) => e.stopPropagation());
+        document.documentElement.appendChild(this.panel);
     }
-    shouldIgnoreElement(element) {
-        return element.closest('.attr-viewer-panel, .attr-viewer-overlay, .attr-viewer-toggle') !== null;
-    }
-    async showElementInfo(element) {
-        this.clearHighlight();
-        this.lastSelectedElement = element;
-        const info = await this.getElementInfo(element);
-        this.displayPanel(info);
-    }
-    async getElementInfo(element) {
-        const attributes = [];
-        // Check if this is a Reddit post
-        const redditPostData = await this.extractRedditPostData(element);
-        if (redditPostData) {
-            attributes.push({ name: 'JSON_DATA', value: redditPostData });
+    updateDeepFakeStatus(isDf, error = false) {
+        if (!this.panel)
+            return;
+        this.panel.innerHTML = '';
+        const container = document.createElement('div');
+        Object.assign(container.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            padding: '10px',
+            justifyContent: 'center',
+            textAlign: 'center'
+        });
+        // Icon
+        const icon = document.createElement('div');
+        Object.assign(icon.style, {
+            fontSize: '48px',
+            flexShrink: '0'
+        });
+        // Message
+        const message = document.createElement('div');
+        Object.assign(message.style, {
+            flex: '1',
+            fontSize: '20px',
+            fontWeight: '600',
+            lineHeight: '1.4'
+        });
+        if (error) {
+            icon.textContent = '⚠️';
+            message.textContent = 'Unable to verify image';
+            message.style.color = '#f87171';
+        }
+        else if (isDf) {
+            icon.textContent = '🤖';
+            message.textContent = 'Warning: This image may be AI-generated';
+            message.style.color = '#fbbf24';
         }
         else {
-            // Fallback to text content
-            const textContent = element.innerText || element.textContent || '';
-            if (textContent.trim()) {
-                attributes.push({ name: 'TEXT', value: textContent.trim() });
-            }
+            icon.textContent = '✓';
+            message.textContent = 'This image appears authentic';
+            message.style.color = '#34d399';
         }
-        return {
-            tagName: element.tagName.toLowerCase(),
-            attributes: attributes
-        };
+        container.appendChild(icon);
+        container.appendChild(message);
+        this.panel.appendChild(container);
     }
-    async extractRedditPostData(element) {
-        // Find the Reddit post container
-        let postContainer = element;
-        while (postContainer) {
-            if (postContainer.hasAttribute('data-testid') &&
-                postContainer.getAttribute('data-testid')?.includes('post')) {
-                break;
-            }
-            if (postContainer.tagName === 'ARTICLE' ||
-                postContainer.classList.contains('Post') ||
-                postContainer.hasAttribute('data-post-id')) {
-                break;
-            }
-            postContainer = postContainer.parentElement;
-        }
-        if (!postContainer) {
-            return null;
-        }
-        const postData = {
-            title: '',
-            text: '',
-            images: [],
-            videos: []
-        };
-        // Extract post title
-        const titleElement = postContainer.querySelector('h3, [data-click-id="text"], [slot="title"]');
-        if (titleElement) {
-            postData.title = titleElement.textContent?.trim() || '';
-        }
-        // Extract post text/body
-        const textElements = postContainer.querySelectorAll('[data-testid="post-content"], [data-click-id="body"]');
-        if (textElements.length > 0) {
-            postData.text = Array.from(textElements).map(el => el.textContent?.trim()).filter(t => t).join(' ');
-        }
-        // Extract images
-        const images = Array.from(postContainer.querySelectorAll('img'));
-        for (const img of images) {
-            if (img.src && !img.src.includes('icon') && !img.src.includes('avatar')) {
-                postData.images.push(img.src);
-            }
-        }
-        // keep only the last image
-        if (postData.images.length > 1) {
-            postData.images = [postData.images[postData.images.length - 1]];
-        }
-        // Extract videos
-        const videos = Array.from(postContainer.querySelectorAll('video'));
-        for (const video of videos) {
-            if (video.src) {
-                postData.videos.push(video.src);
-            }
-        }
-        if (postData.title || postData.text || postData.images.length > 0 || postData.videos.length > 0) {
-            return JSON.stringify(postData, null, 2);
-        }
-        return null;
+    showDeepFakeCheck() {
+        if (!this.panel)
+            return;
+        this.panel.innerHTML = '';
+        const container = document.createElement('div');
+        Object.assign(container.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            padding: '10px',
+            justifyContent: 'center',
+            textAlign: 'center'
+        });
+        const spinner = document.createElement('div');
+        spinner.textContent = '🔍';
+        spinner.style.fontSize = '48px';
+        const message = document.createElement('div');
+        message.textContent = 'Checking image...';
+        Object.assign(message.style, {
+            fontSize: '18px',
+            color: '#9ca3af'
+        });
+        container.appendChild(spinner);
+        container.appendChild(message);
+        this.panel.appendChild(container);
     }
-    displayPanel(info) {
-        this.closePanel();
-        this.infoPanel = document.createElement('div');
-        this.infoPanel.className = 'attr-viewer-panel';
-        let content = `
-      <button class="attr-viewer-close" title="Close">×</button>
-      <h2>
-        <span>Element Details</span>
-        <span class="tag-name">&lt;${info.tagName}&gt;</span>
-      </h2>
-    `;
-        if (info.attributes.length > 0) {
-            content += '<div class="attr-viewer-section">';
-            info.attributes.forEach(attr => {
-                if (attr.name === 'JSON_DATA') {
-                    content += `
-            <div class="attr-viewer-item">
-              <pre style="color: white; white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 0;">${this.escapeHtml(attr.value)}</pre>
-            </div>
-          `;
-                }
-                else {
-                    content += `
-            <div class="attr-viewer-item">
-              <span class="attr-viewer-value">${this.escapeHtml(attr.value)}</span>
-            </div>
-          `;
-                }
-            });
-            content += '</div>';
-        }
-        else {
-            content += '<div class="attr-viewer-section"><div class="attr-viewer-empty">No Reddit post or text found</div></div>';
-        }
-        this.infoPanel.innerHTML = content;
-        const closeBtn = this.infoPanel.querySelector('.attr-viewer-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.closePanel());
-        }
-        document.body.appendChild(this.infoPanel);
-        if (this.overlay) {
-            this.overlay.classList.add('active');
-        }
+    clearPanel() {
+        if (this.panel)
+            this.panel.innerHTML = '';
     }
-    closePanel() {
-        if (this.infoPanel) {
-            this.infoPanel.remove();
-            this.infoPanel = null;
+    show(el) {
+        this.currentEl = el;
+        this.ensurePanel();
+        this.clearPanel();
+        // Only show deep fake check for images
+        if (el.tagName !== 'IMG') {
+            this.panel.style.display = 'none';
+            return;
         }
-        if (this.overlay) {
-            this.overlay.classList.remove('active');
-        }
-        this.clearHighlight();
+        this.panel.style.display = 'block';
     }
-    clearHighlight() {
-        if (this.lastSelectedElement) {
-            this.lastSelectedElement.classList.remove('attr-viewer-highlight');
-            this.lastSelectedElement = null;
-        }
-    }
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    hide() {
+        if (this.panel)
+            this.panel.style.display = 'none';
+        this.currentEl = null;
     }
 }
-// Initialize the extension
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new AttributeViewer();
-    });
-}
-else {
-    new AttributeViewer();
-}
+// Initialize viewer
+new AttributeViewer();
 //# sourceMappingURL=content.js.map

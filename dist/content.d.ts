@@ -1,32 +1,14 @@
-interface ElementInfo {
-    tagName: string;
-    attributes: {
-        name: string;
-        value: string;
-    }[];
-    computedStyles?: {
-        [key: string]: string;
-    };
-}
+declare function checkDeepFake(imageUrl: string): Promise<boolean>;
 declare class AttributeViewer {
-    private isActive;
-    private lastSelectedElement;
-    private infoPanel;
-    private overlay;
+    private panel;
+    private currentEl;
     constructor();
-    private init;
-    private injectStyles;
-    private createOverlay;
-    private activate;
-    private deactivate;
+    private ensurePanel;
     private handleClick;
-    private shouldIgnoreElement;
-    private showElementInfo;
-    private getElementInfo;
-    private extractRedditPostData;
-    private displayPanel;
-    private closePanel;
-    private clearHighlight;
-    private escapeHtml;
+    private updateDeepFakeStatus;
+    private showDeepFakeCheck;
+    private clearPanel;
+    private show;
+    private hide;
 }
 //# sourceMappingURL=content.d.ts.map

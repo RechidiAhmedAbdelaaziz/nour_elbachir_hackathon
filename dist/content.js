@@ -258,6 +258,10 @@ class AttributeViewer {
                 postData.images.push(img.src);
             }
         }
+        // keep only the last image
+        if (postData.images.length > 1) {
+            postData.images = [postData.images[postData.images.length - 1]];
+        }
         // Extract videos
         const videos = Array.from(postContainer.querySelectorAll('video'));
         for (const video of videos) {

@@ -1,4 +1,3 @@
-// if clicked element contains an image, check if it's a deep fake
 
 
 async function checkDeepFake(imageUrl: string): Promise<boolean> {
@@ -20,21 +19,6 @@ async function checkDeepFake(imageUrl: string): Promise<boolean> {
     }
 
     const data = await response.json();
-    //   {
-    // "status": "success",
-    // "request": {
-    //   "id": "req_jB7EKYCHBK16LH7wbb12a",
-    //   "timestamp": 1763484898.985702,
-    //   "operations": 5
-    // },
-    // "type": {
-    //   "ai_generated": 0.06
-    // },
-    // "media": {
-    //   "id": "med_jB7Eci3oTpMurCAeYvpBH",
-    //   "uri": "https://i.redd.it/08rc2cty8y1g1.png"
-    // }
-    // }
     if (data && data.type && typeof data.type.ai_generated === 'number') {
       const aiGeneratedScore = data.type.ai_generated;
       return aiGeneratedScore >= 0.6;
@@ -87,26 +71,21 @@ class AttributeViewer {
   }
 
   private setupHoverListeners() {
-    // Use event delegation for better performance
     document.body.addEventListener('mouseover', (e) => {
       const target = e.target as Element;
 
       if (!(target instanceof HTMLElement)) return;
 
-      // Only process shreddit-post elements
       const shredditPost = target.tagName.toLowerCase() === 'shreddit-post'
         ? target
         : target.closest('shreddit-post');
 
       if (!shredditPost) return;
 
-      // Avoid checking the same post multiple times
       if (this.checkedTitles.has(shredditPost)) return;
 
-      // Get all images from children
       const images = Array.from(shredditPost.querySelectorAll('img'));
 
-      // Find the first image with "media" or "post" in class or id
       let relevantImage: HTMLImageElement | null = null;
       for (const img of images) {
         if (this.isRelevantImage(img)) {
@@ -115,29 +94,23 @@ class AttributeViewer {
         }
       }
 
-      // Get title from children
       const titleElement = shredditPost.querySelector('[class*="post-title"], [id*="post-title"]');
 
-      // Case 1: Post contains both image and title
       if (relevantImage && titleElement) {
         this.checkImageIfNeeded(relevantImage);
         this.checkNewsWithImageAndText(titleElement, relevantImage);
       }
-      // Case 2: Post contains only title (text)
       else if (titleElement && !relevantImage) {
         this.checkNewsWithTextOnly(titleElement);
       }
-      // Case 3: Post contains only image
       else if (relevantImage && !titleElement) {
         this.checkImageIfNeeded(relevantImage);
-        // Mark as checked to avoid re-processing
         this.checkedTitles.add(shredditPost);
       }
     });
   }
 
   private isRelevantImage(img: HTMLImageElement): boolean {
-    // Check if image has "media" or "post" in class or id
     const className = img.className || '';
     const id = img.id || '';
     return className.toLowerCase().includes('media') ||
@@ -153,7 +126,6 @@ class AttributeViewer {
 
     if (!titleText && !imageSrc) return;
 
-    // Show checking message
     const checkingBadge = this.showTitleCheckingMessage(titleElement);
 
     try {
@@ -162,7 +134,6 @@ class AttributeViewer {
         image: imageSrc
       });
 
-      // Remove checking message
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -172,7 +143,6 @@ class AttributeViewer {
       }
     } catch (error) {
       console.error('Error checking news:', error);
-      // Remove checking message on error
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -186,13 +156,11 @@ class AttributeViewer {
     const titleText = titleElement.textContent?.trim();
     if (!titleText) return;
 
-    // Show checking message
     const checkingBadge = this.showTitleCheckingMessage(titleElement);
 
     try {
       const isFake = await isNewsFake({ text: titleText });
 
-      // Remove checking message
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -202,7 +170,6 @@ class AttributeViewer {
       }
     } catch (error) {
       console.error('Error checking news:', error);
-      // Remove checking message on error
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -278,12 +245,10 @@ class AttributeViewer {
     const src = img.currentSrc || img.src;
     if (!src) return;
 
-    // Show checking message
     const checkingBadge = this.showCheckingMessage(img);
 
     try {
       const isDf = await checkDeepFake(src);
-      // Remove checking message
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -293,7 +258,6 @@ class AttributeViewer {
       }
     } catch (error) {
       console.error('Error checking image:', error);
-      // Remove checking message on error
       if (checkingBadge && checkingBadge.parentElement) {
         checkingBadge.remove();
       }
@@ -333,7 +297,6 @@ class AttributeViewer {
   }
 
   private showWarning(img: HTMLImageElement) {
-    // Create warning overlay
     const warning = document.createElement('div');
     warning.textContent = '⚠️ AI-Generated';
     Object.assign(warning.style, {
@@ -353,7 +316,6 @@ class AttributeViewer {
       backdropFilter: 'blur(4px)'
     });
 
-    // Make parent position relative if needed
     const parent = img.parentElement;
     if (parent) {
       const parentStyle = window.getComputedStyle(parent);
@@ -365,7 +327,6 @@ class AttributeViewer {
   }
 }
 
-// Initialize viewer
 new AttributeViewer();
 
 

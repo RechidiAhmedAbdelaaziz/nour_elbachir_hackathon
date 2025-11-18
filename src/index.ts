@@ -1,8 +1,8 @@
 
 
 async function checkDeepFake(imageUrl: string): Promise<boolean> {
-  const api_user = '923811902';
-  const api_secret = 'eSf7HziReSsLcDF7mVgnXzro2Euw8Cd2';
+  const api_user = '1666509422';
+  const api_secret = 'axsD2xeptWUyN3XKzHMFVVYFTte7kr6v';
 
   try {
     const params = new URLSearchParams({

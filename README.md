@@ -1,22 +1,27 @@
-# Element Attribute Viewer - Browser Extension
-
-A Chrome/Edge extension that lets you click on any element on a webpage to view its HTML attributes.
+# Reddit Fake-News Detector Extension
 
 ## Features
 
-- Click any element on a webpage to see all its attributes
-- Visual highlighting of selected elements
-- Clean, floating info panel showing attribute names and values
-- Works on all websites
+-   Detect AI-generated images on Reddit posts
+-   Analyze Reddit posts for potential fake news content
+-   Provide visual indicators for AI-generated images and fake news
+-   Works seamlessly on Reddit's website
+
+> **Note**: This extension is specifically designed to work on Reddit for the moment (for prototyping purposes).
+
+> **Warn** : If app does not work as expected, because we use **Free Api Keys** for prototyping purposes, the API limits might have been reached.
+
+---
 
 ## Installation Instructions
 
 ### For Chrome:
 
 1. Build the extension (already done):
-   ```bash
-   npm run build
-   ```
+
+    ```bash
+    npm run build
+    ```
 
 2. Open Chrome and go to: `chrome://extensions/`
 
@@ -28,39 +33,33 @@ A Chrome/Edge extension that lets you click on any element on a webpage to view 
 
 6. The extension is now installed!
 
-### For Edge:
+### For Firefox:
 
 1. Build the extension (already done):
-   ```bash
-   npm run build
-   ```
 
-2. Open Edge and go to: `edge://extensions/`
+    ```bash
+    npm run build
+    ```
 
-3. Enable **Developer mode** (toggle on the left)
+2. Open Firefox and go to: `about:debugging#/runtime/this-firefox`
+3. Click **Load Temporary Add-on**
+4. Select the `dist/manifest.json` file from this project
+5. npmThe extension is now installed!
 
-4. Click **Load unpacked**
-
-5. Select the `dist` folder from this project
-
-6. The extension is now installed!
+---
 
 ## How to Use
 
-1. Navigate to any website
-2. The extension automatically activates
-3. Click on any element to see its attributes in a popup panel
-4. The selected element will be highlighted with a green outline
-5. Click the "Close" button to dismiss the info panel
+1. Navigate to reddit.com and browse posts as usual.
+2. When you hover over a post with an AI-generated image or potential fake news content, visual indicators will appear.
 
-## Development
+![Fake News](fake-news-screenshoot.png)
+![Ai Generated](ai-generated-screenshoot.png)
 
-- **Build**: `npm run build`
-- **Watch mode**: `npm run watch` (auto-rebuilds on file changes)
+## Development Tools
 
-## Files Structure
+1. TypeScript for extension logic
+2. We used N8N which is a NEW INNOVATIVE AI TOOL, we created a workflow, it is triggered by a webhook sent by the extension which contains the text, and the image_url of the reddit post, the workflow checks if there is an image and if yes it downloads it and sends it to GEMINI model, this model extracts the text from the image, then the workflow sends the full text prompt containing the reddit text + the text extracted from the image to the AI AGENT, this agent uses GEMINI LLM as its BRAIN and uses SERPAPI as TOOL search, it then facts checks the information and sends the result to the extension which contains if this news is fake or not
+3. Sightengine API for image analysis (AI-generated detection)
 
-- `src/content.ts` - Main extension logic
-- `manifest.json` - Extension configuration
-- `icon.png` - Extension icon
-- `dist/` - Built extension files (load this folder in browser)
+![n8n Workflow](n8n-workflow-screenshoot.png)
